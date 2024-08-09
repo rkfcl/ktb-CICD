@@ -1,20 +1,30 @@
-# Use an official Python runtime as a parent image
-FROM python:3.8-slim
+# First stage: Build stage
+FROM python:3.8-slim AS build
 
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+# Copy only the requirements file to leverage Docker cache
+COPY requirements.txt .
 
-# Install any needed packages specified in requirements.txt
+# Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Make port 5002 available to the world outside this container
+# Copy the rest of the application code
+COPY . .
+
+# Second stage: Production stage
+FROM python:3.8-slim
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the dependencies and application code from the build stage
+COPY --from=build /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.8/site-packages
+COPY --from=build /app /app
+
+# Expose the port
 EXPOSE 5002
 
-# Define environment variable
-ENV FLASK_APP=app.py
-
-# Run app.py when the container launches
+# Run the application
 CMD ["flask", "run", "--host=0.0.0.0", "--port=5002"]
